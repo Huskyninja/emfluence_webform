@@ -30,3 +30,5 @@ If the Key is not set in the webform correctly as listed above, it will not be i
 
 ## Note
 This module should be considered minimally maintained, and is shared without guarantee or otherwise. It is hoped that sharing this here will be of some small benefit to your project.
+
+The Drupal 8 version of this module can be found here: https://www.drupal.org/project/emfluence_webform
