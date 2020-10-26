@@ -1,0 +1,48 @@
+<?php
+
+/**
+ * @file
+ * Sherpa Webforms installation.
+ */
+ 
+/**
+ * Implements hook_install()
+ */
+ 
+function emfluence_webform_install() {
+	
+	// Set the default variables
+	
+	variable_set('emfluence_webform_auth', 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX');
+	variable_set('emfluence_webform_url', 'https://api.emailer.emfluence.com/v1/contacts/save');
+	variable_set('emfluence_webform_id', 'webform_client_form_###');
+	variable_set('emfluence_webform_quickset', 0);
+	variable_set('emfluence_webform_debug', 1);
+	
+	// Get localization function for installation as t() may be unavailable.
+	$t = get_t();
+	
+	// Give user feedback
+	drupal_set_message($t('Emfluence Webform variables created.'));
+	
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+ 
+function emfluence_webform_uninstall() {
+	
+	variable_del('emfluence_webform_auth');
+	variable_del('emfluence_webform_url');
+	variable_del('emfluence_webform_id');
+	variable_del('emfluence_webform_quickset');
+	variable_del('emfluence_webform_debug');
+	
+	// Get localization function for installation as t() may be unavailable.
+	$t = get_t();
+	
+	// Give user feedback
+	drupal_set_message($t('Emfluence Webform variables have been removed.'));
+	
+}

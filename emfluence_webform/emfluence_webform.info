@@ -1,0 +1,7 @@
+name = Emfluence Contact Webform Integration
+description = Emfluence Contact Save RESTful API integration with Drupal Webforms. Custoimiized to work around Sherpa form settings.
+core = 7.x
+version = 7.x-0.3-dev
+package = Webform
+dependencies[] = webform
+configure = admin/config/services/emfluence

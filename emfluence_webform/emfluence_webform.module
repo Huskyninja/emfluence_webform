@@ -1,0 +1,299 @@
+<?php
+
+/**
+ * @file
+ * Integrate Emfluence and Drupal Webforms by sending json data using curl.
+ */
+ 
+/**
+ * Implements hook_help().
+ */
+
+function emfluence_webform_help($path, $arg) {
+	switch ($path) {
+		case 'admin/help#emfluence_webform':{
+			$ret_val = '<h3>' . t('About') . '</h3>';
+			$ret_val .= '<p>' . t('Integrates Emfluence CRM with forms created with the Webforms module using cUrl and json.') . '</p>';
+			$ret_val .= '<h3>' . t('Instructions') . '</h3>';
+			$ret_val .= '<p>' . t('The module only captures the values listed below. To captures these values, set the Key of the form fields in the Webform to the following:') . '</p>';
+			$ret_val .= '<ul>';
+			$ret_val .= '<li>' . t('First Name - firstName') . '</li>';
+			$ret_val .= '<li>' . t('Last Name - lastName') . '</li>';
+			$ret_val .= '<li>' . t('Email - email') . '</li>';
+			$ret_val .= '<li>' . t('Phone - phone') . '</li>';
+			$ret_val .= '<li>' . t('Address 1 - address1') . '</li>';
+			$ret_val .= '<li>' . t('City - city') . '</li>';
+			$ret_val .= '<li>' . t('State - state') . '</li>';
+			$ret_val .= '<li>' . t('Zip Code - zipCode') . '</li>';
+			$ret_val .= '<li>' . t('Group IDs - groupIDs') . '</li>';
+			$ret_val .= '</ul>';
+			$ret_val .= '<p>' . t('Note: Groups IDs should be comma delineated. It is also recommended that this field be of the hidden field type.') . '</p>';
+			$ret_val .= '<p>' . t('If the Key is not set in the form, it will not be included. First Name, Last Name, and Email are required by Emfluence.') . '</p>';
+			return $ret_val;
+			break;
+		}
+	}
+}
+
+/**
+ * Implements hook_permission().
+ */
+ 
+function emfluence_webform_permission() {
+	
+	return array(
+	
+		'administer emfluence webform' => array(
+			'title' => t('Administer Emfluence Webform Integration'),
+			'description' => t('Perform administrative tasks on Emfluence Webform Integration'),
+		),
+	
+	);
+	
+}
+
+ /**
+ * Find out if the form that was submitted is a form to be sent to Emfluence
+ *
+ * Implements hook_form_alter().
+ */
+
+function emfluence_webform_form_alter(&$form, &$form_state, $form_id) {
+
+	$active_form = variable_get('emfluence_webform_id');
+	// $form_arr = explode(",",$active_form);
+	$form_arr = array_map('trim', explode(",", $active_form));
+	
+	$quickSet = 1;
+
+	foreach ($form_arr as $form_value) {
+		if ($form_id == $form_value) {
+			$form['#submit'][] = 'emfluence_webform_quickset';
+		}
+	}
+
+}
+
+/**
+ * Format the webform data by looping through the form submission, assigning a key / value based on the submission variable name and value, and then formatting into json
+ */
+
+function emfluence_webform_quickset(&$form, &$form_state) {
+	
+	$quickData = array();
+	$useQuickSet = 1;
+	
+	foreach ($form['submitted'] as $key => $value) {
+		
+		if (substr($key, 0, 1) != "#") {
+			
+			if ( $key == "firstName" ) {
+				$quickData['firstName'] = $form['submitted'][$key]['#value'];
+			}
+			
+			if ( $key == "lastName" ) {
+				$quickData['lastName'] = $form['submitted'][$key]['#value'];
+			}
+			
+			if ( $key == "email" ) {
+				$quickData['email'] = $form['submitted'][$key]['#value'];
+			}
+			
+			if ( $key == "phone" ) {
+				$quickData['phone'] = $form['submitted'][$key]['#value'];
+			}
+			
+			if ( $key == "address1" ) {
+				$quickData['address1'] = $form['submitted'][$key]['#value'];
+			}
+
+			if ( $key == "city" ) {
+				$quickData['city'] = $form['submitted'][$key]['#value'];
+			}
+			
+			if ( $key == "state" ) {
+				$quickData['state'] = $form['submitted'][$key]['#value'];
+			}
+			
+			if ( $key == "zipCode" ) {
+				$quickData['zipCode'] = $form['submitted'][$key]['#value'];
+			}
+			
+			if ($key == "groupIDs") {
+				$addGroupIDs[] = $form['submitted'][$key]['#value'];
+			}
+			
+		}
+		
+	}
+	
+	// $addGroupIDs[] = 318643;
+	
+	$quickData['groupIDs'] = $addGroupIDs;
+
+	$jsonQuery = $quickData;
+
+	$quickQuery = json_encode($jsonQuery);
+	
+	emfluence_webform_cURL($quickQuery, $useQuickSet);
+	
+	// watchdog('Emfluence Webform', 'The JSON output is '.print_r($quickQuery, TRUE));
+	
+}
+
+
+/**
+ * Send the data to emfluence using cURL
+ *
+ * @param string
+ * 	The content of the webform formatted as json to be sent
+ * 
+ * @param boolean
+ * 	The check value to see what form of encoding was used to create the json (param unused - the 'quickset' process is always used)
+ *
+ */
+
+function emfluence_webform_cURL($emQuery, $reportQuickSet) {
+	
+	$url = variable_get('emfluence_webform_url');
+	
+	$reportQuickSet = 0;
+	
+	$debug = variable_get('emfluence_webform_debug');
+	
+	$auth_key = variable_get('emfluence_webform_auth');
+	
+	// $debug = 1;
+	
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, $emQuery);
+	curl_setopt($ch, CURLOPT_POST, 1);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+	// curl_setopt($ch, CURLOPT_MAXREDIRS, 0);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLINFO_HEADER_OUT, true);
+	
+	curl_setopt($ch, CURLOPT_HTTPHEADER, array(   
+		'Authorization: ' . $auth_key,
+		'Content-Type: application/json'                        
+		)
+	);
+	
+	$result = curl_exec($ch);
+    $error = curl_error($ch);
+	
+	$info = curl_getinfo($ch);
+	
+	// $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+	$response = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+	
+	$fullBack = array();
+	$fullBack = json_decode($result);
+	
+	if ($result === FALSE) {
+		watchdog('Emfluence Webform', 'Failed to post using cURL:<br>' . print_r($emQuery,TRUE) . '<br>Target URL: ' . print_r($url,TRUE) . '<br>Error: ' . print_r(curl_error($ch),TRUE) . '<br>Error Code: ' . print_r(curl_errno($ch),TRUE), array(), WATCHDOG_ERROR);
+	} else {
+		if ($debug == 1) {
+			watchdog('Emfluence Webform', 'Posted the following using cURL:<br>' . print_r($emQuery,TRUE) . '<br>Target URL: ' . print_r($url,TRUE) . '<br>Response: '.print_r($response,TRUE));
+			watchdog('Emfluence Webform', 'cURL Response Header: <br>' . print_r($result,TRUE));
+		}
+	}
+	
+	curl_close($ch);	
+	
+}
+
+/**
+ * Drupal admin functions
+ *
+ * Implements hook_menu().
+ **/
+
+function emfluence_webform_menu() {
+  $items = array();
+
+  $items['admin/config/services/emfluence'] = array(
+    'title' => 'Emfluence Contact Save Settings',
+    'description' => 'Administer integration of Drupal 7 Webforms and Emfluence CRM.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('emfluence_webform_admin_settings_form'),
+    'access arguments' => array('administer emfluence webform'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_form().
+ */
+
+function emfluence_webform_admin_settings_form($node, &$form_state) {
+	
+	$form = array();
+	
+	$form['emfluence_webform_auth'] = array(
+		'#title' => t('Authorization Key'),
+		'#description' => ('The Emfluence authorization key. This is provided by Emfluence to connect to the remote API.'),
+		'#type' => 'textfield',
+		'#default_value' => variable_get('emfluence_webform_auth'),
+		'#required' => TRUE,
+	);
+	
+	$form['emfluence_webform_url'] = array(
+		'#title' => t('Emfluence Remote URL'),
+		'#description' => t('The URL of the remote emfluence server, including http or https.'),
+		'#type' => 'textfield',
+		'#size' => 100,
+		'#default_value' => variable_get('emfluence_webform_url'),
+		'#required' => TRUE,
+	);
+
+	$form['emfluence_webform_id'] = array(
+		'#title' => t('Webform Form IDs'),
+		'#description' => t('Enter Webform IDs [e.g. webform_client_form_###]. To enter more than one, seperate each ID with a comma.'),
+		'#type' => 'textfield',
+		'#size' => 100,
+		'#default_value' => variable_get('emfluence_webform_id'),
+		'#required' => TRUE,
+	);
+
+	$form['emfluence_webform_quickset'] = array(
+		'#title' => t('Quickset Form Values - Non-functional'),
+		'#description' => t('Deprecated. Does not do anthing right now.'),
+		'#type' => 'checkbox',
+		'#default_value' => variable_get('emfluence_webform_quickset'),
+		'#required' => FALSE,
+	);
+	
+	$form['emfluence_webform_debug'] = array(
+		'#title' => t('Debug Mode'),
+		'#description' => t('Turns on verbose logging. Without this set, only Error conditions will be reported. Useful for checking the POST string and server response.'),
+		'#type' => 'checkbox',
+		'#default_value' => variable_get('emfluence_webform_debug'),
+		'#required' => FALSE,
+	);
+
+	return system_settings_form($form);
+
+}
+
+/**
+ * Validate form settings
+ */
+
+function emfluence_webform_admin_settings_form_validate($form, &$form_state) {
+	
+	// regular expression for validating urls	
+	$url_regex = '/\b(?:(?:https?|ftp):\/\/|www\.)[-a-z0-9+&@#\/%?=~_|!:,.;]*[-a-z0-9+&@#\/%=~_|]/i';
+	
+	$emfluence_form_url = $form_state['values']['emfluence_webform_url'];
+	
+	if (!preg_match($url_regex, $emfluence_form_url)) {
+		form_set_error('emfluence_webform_url', t('Invalid URL.'));
+	}
+	
+}
