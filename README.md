@@ -1,6 +1,6 @@
 # Emfluence Webform
 Emfluence Contact Save RESTful API integration with Drupal Webforms.
-version = 7.x-0.3-dev
+Version 7.x-0.3-dev
 
 ## About
 Integrates Emfluence CRM's /save RESTful endpoint with forms created with the Webforms module on Drupal 7 using curl. You must have curl installed and enabled.
